@@ -16,12 +16,9 @@ jQuery(document).ready(function($){
     	var $fold='.f_'+this.id;
     	$($fold).slideToggle('normal', "swing");
   	});
-	
-	//delays until AjaxUpload is finished loading
-	//fixes bug in Safari and Mac Chrome
-	if (typeof AjaxUpload != 'function') { 
-			return ++counter < 6 && window.setTimeout(init, counter * 500);
-	}
+
+  	//Color picker
+  	$('.of-color').wpColorPicker();
 	
 	//hides warning if js is enabled			
 	$('#js-warning').hide();
@@ -135,118 +132,6 @@ jQuery(document).ready(function($){
 	$('.of-radio-tile-img').show();
 	$('.of-radio-tile-radio').hide();
 
-	//AJAX Upload
-	function of_image_upload() {
-	$('.image_upload_button').each(function(){
-			
-	var clickedObject = $(this);
-	var clickedID = $(this).attr('id');	
-			
-	var nonce = $('#security').val();
-			
-	new AjaxUpload(clickedID, {
-		action: ajaxurl,
-		name: clickedID, // File upload name
-		data: { // Additional data to send
-			action: 'of_ajax_post_action',
-			type: 'upload',
-			security: nonce,
-			data: clickedID },
-		autoSubmit: true, // Submit file after selection
-		responseType: false,
-		onChange: function(file, extension){},
-		onSubmit: function(file, extension){
-			clickedObject.text('Uploading'); // change button text, when user selects file	
-			this.disable(); // If you want to allow uploading only 1 file at time, you can disable upload button
-			interval = window.setInterval(function(){
-				var text = clickedObject.text();
-				if (text.length < 13){	clickedObject.text(text + '.'); }
-				else { clickedObject.text('Uploading'); } 
-				}, 200);
-		},
-		onComplete: function(file, response) {
-			window.clearInterval(interval);
-			clickedObject.text('Upload Image');	
-			this.enable(); // enable upload button
-				
-	
-			// If nonce fails
-			if(response==-1){
-				var fail_popup = $('#of-popup-fail');
-				fail_popup.fadeIn();
-				window.setTimeout(function(){
-				fail_popup.fadeOut();                        
-				}, 2000);
-			}				
-					
-			// If there was an error
-			else if(response.search('Upload Error') > -1){
-				var buildReturn = '<span class="upload-error">' + response + '</span>';
-				$(".upload-error").remove();
-				clickedObject.parent().after(buildReturn);
-				
-				}
-			else{
-				var buildReturn = '<img class="hide of-option-image" id="image_'+clickedID+'" src="'+response+'" alt="" />';
-
-				$(".upload-error").remove();
-				$("#image_" + clickedID).remove();	
-				clickedObject.parent().after(buildReturn);
-				$('img#image_'+clickedID).fadeIn();
-				clickedObject.next('span').fadeIn();
-				clickedObject.parent().prev('input').val(response);
-			}
-		}
-	});
-			
-	});
-	
-	}
-	
-	of_image_upload();
-			
-	//AJAX Remove Image (clear option value)
-	$('.image_reset_button').live('click', function(){
-	
-		var clickedObject = $(this);
-		var clickedID = $(this).attr('id');
-		var theID = $(this).attr('title');	
-				
-		var nonce = $('#security').val();
-	
-		var data = {
-			action: 'of_ajax_post_action',
-			type: 'image_reset',
-			security: nonce,
-			data: theID
-		};
-					
-		$.post(ajaxurl, data, function(response) {
-						
-			//check nonce
-			if(response==-1){ //failed
-							
-				var fail_popup = $('#of-popup-fail');
-				fail_popup.fadeIn();
-				window.setTimeout(function(){
-					fail_popup.fadeOut();                        
-				}, 2000);
-			}
-						
-			else {
-						
-				var image_to_remove = $('#image_' + theID);
-				var button_to_hide = $('#reset_' + theID);
-				image_to_remove.fadeOut(500,function(){ $(this).remove(); });
-				button_to_hide.fadeOut();
-				clickedObject.parent().prev('input').val('');
-			}
-						
-						
-		});
-					
-	}); 
-
 	// Style Select
 	(function ($) {
 	styleSelect = {
@@ -274,7 +159,13 @@ jQuery(document).ready(function($){
 	$(".slide_body").hide(); 
 
 	//Switch the "Open" and "Close" state per click then slide up/down (depending on open/close state)
-	$(".slide_edit_button").live( 'click', function(){
+	$(".slide_edit_button").live( 'click', function(){		
+		/*
+		//display as an accordion
+		$(".slide_header").removeClass("active");	
+		$(".slide_body").slideUp("fast");
+		*/
+		//toggle for each
 		$(this).parent().toggleClass("active").next().slideToggle("fast");
 		return false; //Prevent the browser jump to the link anchor
 	});	
@@ -319,7 +210,6 @@ jQuery(document).ready(function($){
 	$(".slide_add_button").live('click', function(){		
 		var slidesContainer = $(this).prev();
 		var sliderId = slidesContainer.attr('id');
-		var sliderInt = $('#'+sliderId).attr('rel');
 		
 		var numArr = $('#'+sliderId +' li').find('.order').map(function() { 
 			var str = this.id; 
@@ -332,14 +222,15 @@ jQuery(document).ready(function($){
 		if (maxNum < 1 ) { maxNum = 0};
 		var newNum = maxNum + 1;
 		
-		var newSlide = '<li class="temphide"><div class="slide_header"><strong>Slide ' + newNum + '</strong><input type="hidden" class="slide of-input order" name="' + sliderId + '[' + newNum + '][order]" id="' + sliderId + '_slide_order-' + newNum + '" value="' + newNum + '"><a class="slide_edit_button" href="#">Edit</a></div><div class="slide_body" style="display: none; "><label>Title</label><input class="slide of-input of-slider-title" name="' + sliderId + '[' + newNum + '][title]" id="' + sliderId + '_' + newNum + '_slide_title" value=""><label>Image URL</label><input class="slide of-input" name="' + sliderId + '[' + newNum + '][url]" id="' + sliderId + '_' + newNum + '_slide_url" value=""><div class="upload_button_div"><span class="button media_upload_button" id="' + sliderId + '_' + newNum + '" rel="'+sliderInt+'">Upload</span><span class="button mlu_remove_button hide" id="reset_' + sliderId + '_' + newNum + '" title="' + sliderId + '_' + newNum + '">Remove</span></div><div class="screenshot"></div><label>Link URL (optional)</label><input class="slide of-input" name="' + sliderId + '[' + newNum + '][link]" id="' + sliderId + '_' + newNum + '_slide_link" value=""><label>Description (optional)</label><textarea class="slide of-input" name="' + sliderId + '[' + newNum + '][description]" id="' + sliderId + '_' + newNum + '_slide_description" cols="8" rows="8"></textarea><a class="slide_delete_button" href="#">Delete</a><div class="clear"></div></div></li>';
+		var newSlide = '<li class="temphide"><div class="slide_header"><strong>Slide ' + newNum + '</strong><input type="hidden" class="slide of-input order" name="' + sliderId + '[' + newNum + '][order]" id="' + sliderId + '_slide_order-' + newNum + '" value="' + newNum + '"><a class="slide_edit_button" href="#">Edit</a></div><div class="slide_body" style="display: none; "><label>Title</label><input class="slide of-input of-slider-title" name="' + sliderId + '[' + newNum + '][title]" id="' + sliderId + '_' + newNum + '_slide_title" value=""><label>Image URL</label><input class="upload slide of-input" name="' + sliderId + '[' + newNum + '][url]" id="' + sliderId + '_' + newNum + '_slide_url" value=""><div class="upload_button_div"><span class="button media_upload_button" id="' + sliderId + '_' + newNum + '">Upload</span><span class="button remove-image hide" id="reset_' + sliderId + '_' + newNum + '" title="' + sliderId + '_' + newNum + '">Remove</span></div><div class="screenshot"></div><label>Link URL (optional)</label><input class="slide of-input" name="' + sliderId + '[' + newNum + '][link]" id="' + sliderId + '_' + newNum + '_slide_link" value=""><label>Description (optional)</label><textarea class="slide of-input" name="' + sliderId + '[' + newNum + '][description]" id="' + sliderId + '_' + newNum + '_slide_description" cols="8" rows="8"></textarea><a class="slide_delete_button" href="#">Delete</a><div class="clear"></div></div></li>';
 		
 		slidesContainer.append(newSlide);
-		$('.temphide').fadeIn('fast', function() {
+		var nSlide = slidesContainer.find('.temphide');
+		nSlide.fadeIn('fast', function() {
 			$(this).removeClass('temphide');
 		});
 				
-		of_image_upload(); // re-initialise upload image..
+		optionsframework_file_bindings(); // re-initialise upload image..
 		
 		return false; //prevent jumps, as always..
 	});	
@@ -349,7 +240,9 @@ jQuery(document).ready(function($){
 		var id = jQuery(this).attr('id');
 		$('#'+ id).sortable({
 			placeholder: "placeholder",
-			opacity: 0.6
+			opacity: 0.6,
+			handle: ".slide_header",
+			cancel: "a"
 		});	
 	});
 	
@@ -620,147 +513,204 @@ jQuery(document).ready(function($){
 		});
 	}
 	
+	
+	/**
+	  * JQuery UI Slider function
+	  * Dependencies 	 : jquery, jquery-ui-slider
+	  * Feature added by : Smartik - http://smartik.ws/
+	  * Date 			 : 03.17.2013
+	  */
+	jQuery('.smof_sliderui').each(function() {
+		
+		var obj   = jQuery(this);
+		var sId   = "#" + obj.data('id');
+		var val   = parseInt(obj.data('val'));
+		var min   = parseInt(obj.data('min'));
+		var max   = parseInt(obj.data('max'));
+		var step  = parseInt(obj.data('step'));
+		
+		//slider init
+		obj.slider({
+			value: val,
+			min: min,
+			max: max,
+			step: step,
+			range: "min",
+			slide: function( event, ui ) {
+				jQuery(sId).val( ui.value );
+			}
+		});
+		
+	});
+
+
+	/**
+	  * Switch
+	  * Dependencies 	 : jquery
+	  * Feature added by : Smartik - http://smartik.ws/
+	  * Date 			 : 03.17.2013
+	  */
+	jQuery(".cb-enable").click(function(){
+		var parent = $(this).parents('.switch-options');
+		jQuery('.cb-disable',parent).removeClass('selected');
+		jQuery(this).addClass('selected');
+		jQuery('.main_checkbox',parent).attr('checked', true);
+		
+		//fold/unfold related options
+		var obj = jQuery(this);
+		var $fold='.f_'+obj.data('id');
+		jQuery($fold).slideDown('normal', "swing");
+	});
+	jQuery(".cb-disable").click(function(){
+		var parent = $(this).parents('.switch-options');
+		jQuery('.cb-enable',parent).removeClass('selected');
+		jQuery(this).addClass('selected');
+		jQuery('.main_checkbox',parent).attr('checked', false);
+		
+		//fold/unfold related options
+		var obj = jQuery(this);
+		var $fold='.f_'+obj.data('id');
+		jQuery($fold).slideUp('normal', "swing");
+	});
+	//disable text select(for modern chrome, safari and firefox is done via CSS)
+	if (($.browser.msie && $.browser.version < 10) || $.browser.opera) { 
+		$('.cb-enable span, .cb-disable span').find().attr('unselectable', 'on');
+	}
+	
+	
+	/**
+	  * Google Fonts
+	  * Dependencies 	 : google.com, jquery
+	  * Feature added by : Smartik - http://smartik.ws/
+	  * Date 			 : 03.17.2013
+	  */
+	function GoogleFontSelect( slctr, mainID ){
+		
+		var _selected = $(slctr).val(); 						//get current value - selected and saved
+		var _linkclass = 'style_link_'+ mainID;
+		var _previewer = mainID +'_ggf_previewer';
+		
+		if( _selected ){ //if var exists and isset
+			
+			//Check if selected is not equal with "Select a font" and execute the script.
+			if ( _selected !== 'none' && _selected !== 'Select a font' ) {
+				
+				//remove other elements crested in <head>
+				$( '.'+ _linkclass ).remove();
+				
+				//replace spaces with "+" sign
+				var the_font = _selected.replace(/\s+/g, '+');
+				
+				//add reference to google font family
+				$('head').append('<link href="http://fonts.googleapis.com/css?family='+ the_font +'" rel="stylesheet" type="text/css" class="'+ _linkclass +'">');
+				
+				//show in the preview box the font
+				$('.'+ _previewer ).css('font-family', _selected +', sans-serif' );
+				
+			}else{
+				
+				//if selected is not a font remove style "font-family" at preview box
+				$('.'+ _previewer ).css('font-family', '' );
+				
+			}
+		
+		}
+	
+	}
+	
+	//init for each element
+	jQuery( '.google_font_select' ).each(function(){ 
+		var mainID = jQuery(this).attr('id');
+		GoogleFontSelect( this, mainID );
+	});
+	
+	//init when value is changed
+	jQuery( '.google_font_select' ).change(function(){ 
+		var mainID = jQuery(this).attr('id');
+		GoogleFontSelect( this, mainID );
+	});
+
+
+	/**
+	  * Media Uploader
+	  * Dependencies 	 : jquery, wp media uploader
+	  * Feature added by : Smartik - http://smartik.ws/
+	  * Date 			 : 05.28.2013
+	  */
+	function optionsframework_add_file(event, selector) {
+	
+		var upload = $(".uploaded-file"), frame;
+		var $el = $(this);
+
+		event.preventDefault();
+
+		// If the media frame already exists, reopen it.
+		if ( frame ) {
+			frame.open();
+			return;
+		}
+
+		// Create the media frame.
+		frame = wp.media({
+			// Set the title of the modal.
+			title: $el.data('choose'),
+
+			// Customize the submit button.
+			button: {
+				// Set the text of the button.
+				text: $el.data('update'),
+				// Tell the button not to close the modal, since we're
+				// going to refresh the page when the image is selected.
+				close: false
+			}
+		});
+
+		// When an image is selected, run a callback.
+		frame.on( 'select', function() {
+			// Grab the selected attachment.
+			var attachment = frame.state().get('selection').first();
+			frame.close();
+			selector.find('.upload').val(attachment.attributes.url);
+			if ( attachment.attributes.type == 'image' ) {
+				selector.find('.screenshot').empty().hide().append('<img class="of-option-image" src="' + attachment.attributes.url + '">').slideDown('fast');
+			}
+			selector.find('.media_upload_button').unbind();
+			selector.find('.remove-image').show().removeClass('hide');//show "Remove" button
+			selector.find('.of-background-properties').slideDown();
+			optionsframework_file_bindings();
+		});
+
+		// Finally, open the modal.
+		frame.open();
+	}
+    
+	function optionsframework_remove_file(selector) {
+		selector.find('.remove-image').hide().addClass('hide');//hide "Remove" button
+		selector.find('.upload').val('');
+		selector.find('.of-background-properties').hide();
+		selector.find('.screenshot').slideUp();
+		selector.find('.remove-file').unbind();
+		// We don't display the upload button if .upload-notice is present
+		// This means the user doesn't have the WordPress 3.5 Media Library Support
+		if ( $('.section-upload .upload-notice').length > 0 ) {
+			$('.media_upload_button').remove();
+		}
+		optionsframework_file_bindings();
+	}
+	
+	function optionsframework_file_bindings() {
+		$('.remove-image, .remove-file').on('click', function() {
+			optionsframework_remove_file( $(this).parents('.section-upload, .section-media, .slide_body') );
+        });
+        
+        $('.media_upload_button').unbind('click').click( function( event ) {
+        	optionsframework_add_file(event, $(this).parents('.section-upload, .section-media, .slide_body'));
+        });
+    }
+    
+    optionsframework_file_bindings();
+
+	
+	
+
 }); //end doc ready
-
-// google font field script by partnuz (http://themeforest.net/user/partnuz/) under GPL
-function googleFontPreviewer(excludePreviewer, excludeStyle, previewer, selector){
-
-	// previewer class
-	(previewer==null || previewer==undefined) ? this.fontPreviewerName="p.google_font_preview" : this.fontPreviewerName=excludePreviewer;
-	
-	// select form class
-	(selector==null || excludePreviewer==undefined) ? this.fontSelectorName=".google_font_select" : this.fontSelectorName=selector;
-	
-	// must be the same through all instances of class
-	this.fontStyleName=".google_font_style";
-	
-	// exclude from loading css style from google
-	(excludeStyle==null || excludeStyle==undefined) ? 	this.excludeFromAddStyle=new Array("Select a font","Arial","Helvetica","Arial Black", "Comic Sans MS", "Courier New","Georgia", "Impact", "Lucida Console", "Lucida Sans Unicode", "Lucida Grande", "Palatino Linotype", "Palatino", "Tahoma", "Geneva", "Times New Roman", "Trebuchet MS", "Verdana", "Symbol","Webdings") : this.excludeFromAddStylee=excludeStyle;
-	
-	// exclude from loading in previewer field
-	(excludePreviewer==null || excludePreviewer==undefined) ? this.excludeFromPreviewer=new Array("Select a font") : this.excludeFromPreviewer=excludePreviewer;
-	
-	// reference
-	var obj=this;
-	
-	this.previewer=function(selectNode){
-
-		var viewerNode=selectNode.parentNode.parentNode.querySelector(this.fontPreviewerName);
-
-		// line below used to get rid of opera rendering  glitch
-		var viewerValue=viewerNode.childNodes[0].nodeValue;
-		
-		viewerNode.innerHTML=viewerValue;
-		
-		var fontValue = selectNode.value.replace(/\+/g, ' ');
-		
-		// sets style font family
-		if(!this.arrayCheck(this.excludeFromPreviewer, fontValue)){
-		
-			viewerNode.style.fontFamily=fontValue;
-		}
-		
-		
-	}
-	
-	this.createStyle=function(currentFont){
-	
-		var newNode=document.createElement('link');
-		newNode.setAttribute('href', 'http://fonts.googleapis.com/css?family='+currentFont);
-		newNode.setAttribute('rel', 'stylesheet');
-		newNode.setAttribute('type', 'text/css');
-		newNode.setAttribute('class', 'google_font_style');
-		document.getElementsByTagName('head')[0].appendChild(newNode);
-		
-	}
-	
-	this.addStyle=function(currentFont){
-	
-		// search for styles with class google_font_style;
-		var styles=document.querySelectorAll(this.fontStyleName);
-		var stylesCount=styles.length;
-		var currentFontPlain=null;
-		
-		var action=false;
-		
-		for(var i=0; i<stylesCount; i++){
-			var url=styles[i].getAttribute('href');
-			
-			currentFontPlain=currentFont.replace(/\+/g, ' ');
-			
-			regCurrentFont=currentFont.replace(/\+/g, '\\+');
-			regCurrentFont=new RegExp(regCurrentFont);
-			
-			// search through style list 
-			if(regCurrentFont.test(url)){
-				action=true;
-				
-			}
-		}
-		
-		if(action==false || stylesCount==0){
-			if(!this.arrayCheck(this.excludeFromAddStyle, currentFontPlain)){
-				this.createStyle(currentFont);
-			}
-			
-		}
-		
-	}
-	
-	this.arrayCheck=function(array, check){
-		var length=array.length;
-		for(var i=0; i<length; i++){
-			if(array[i]==check){
-				return true;
-			}
-		}
-		return false;
-	};
-	
-	this.init=function(){
-		var selectNodes=document.querySelectorAll(this.fontSelectorName);
-		var selectCount=selectNodes.length;
-		
-		for(var i=0; i<selectCount; i++){
-			
-			if(window.addEventListener){
-			
-				// first time
-				this.addStyle(selectNodes[i].value);
-				this.previewer(selectNodes[i]);
-				
-				// onchange
-				selectNodes[i].addEventListener("change", function(){
-				
-					obj.addStyle(this.value);
-					obj.previewer(this);
-					
-				}, false);
-				
-			}else if(window.attachEvent){
-			
-				this.addStyle(selectNodes[i].value);
-				this.previewer(selectNodes[i]);
-				
-				selectNodes[i].attachEvent("onchange", function(){
-				
-					obj.addStyle(window.event.srcElement.value);
-					obj.previewer(window.event.srcElement);
-
-				});
-				
-			}
-			
-		}
-		
-	}
-	
-	if(window.addEventListener){
-		window.addEventListener("load", function(){obj.init();}, false);
-	}else if(window.attachEvent){
-		window.attachEvent("onload", function(){obj.init();});
-	}
-	
-}
-
-var googleFontObj=new googleFontPreviewer();

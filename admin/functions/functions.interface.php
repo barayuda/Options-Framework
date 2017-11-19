@@ -14,7 +14,6 @@
  *
  * @uses wp_verify_nonce()
  * @uses header()
- * @uses update_option()
  *
  * @since 1.0.0
  */
@@ -23,6 +22,26 @@ function optionsframework_admin_init()
 	// Rev up the Options Machine
 	global $of_options, $options_machine;
 	$options_machine = new Options_Machine($of_options);
+
+	$smof_data = of_get_options();
+	$data = $smof_data;
+	do_action('optionsframework_admin_init_before', array(
+			'of_options'		=> $of_options,
+			'options_machine'	=> $options_machine,
+			'smof_data'			=> $smof_data
+		));
+	if (empty($smof_data['smof_init'])) { // Let's set the values if the theme's already been active
+		of_save_options($options_machine->Defaults);
+		of_save_options(date('r'), 'smof_init');
+		$smof_data = of_get_options();
+		$options_machine = new Options_Machine($of_options);
+	}
+	do_action('optionsframework_admin_init_after', array(
+			'of_options'		=> $of_options,
+			'options_machine'	=> $options_machine,
+			'smof_data'			=> $smof_data
+		));
+
 }
 
 /**
@@ -40,8 +59,6 @@ function optionsframework_add_admin() {
 	// Add framework functionaily to the head individually
 	add_action("admin_print_scripts-$of_page", 'of_load_only');
 	add_action("admin_print_styles-$of_page",'of_style_only');
-	add_action( "admin_print_styles-$of_page", 'optionsframework_mlu_css', 0 );
-	add_action( "admin_print_scripts-$of_page", 'optionsframework_mlu_js', 0 );	
 	
 }
 
@@ -54,10 +71,13 @@ function optionsframework_add_admin() {
 function optionsframework_options_page(){
 	
 	global $options_machine;
+	
 	/*
 	//for debugging
-	$data = get_option(OPTIONS);
-	print_r($data);
+
+	$smof_data = of_get_options();
+	print_r($smof_data);
+
 	*/	
 	
 	include_once( ADMIN_PATH . 'front-end/options.php' );
@@ -73,7 +93,14 @@ function optionsframework_options_page(){
  */
 function of_style_only(){
 	wp_enqueue_style('admin-style', ADMIN_DIR . 'assets/css/admin-style.css');
-	wp_enqueue_style('color-picker', ADMIN_DIR . 'assets/css/colorpicker.css');
+	//wp_enqueue_style('color-picker', ADMIN_DIR . 'assets/css/colorpicker.css');
+	wp_enqueue_style('jquery-ui-custom-admin', ADMIN_DIR .'assets/css/jquery-ui-custom.css');
+
+	if ( !wp_style_is( 'wp-color-picker','registered' ) ) {
+		wp_register_style( 'wp-color-picker', ADMIN_DIR . 'assets/css/color-picker.min.css' );
+	}
+	wp_enqueue_style( 'wp-color-picker' );
+
 }	
 
 /**
@@ -86,64 +113,40 @@ function of_style_only(){
  */
 function of_load_only() 
 {
-	add_action('admin_head', 'of_admin_head');
+	//add_action('admin_head', 'smof_admin_head');
 	
 	wp_enqueue_script('jquery-ui-core');
 	wp_enqueue_script('jquery-ui-sortable');
+	wp_enqueue_script('jquery-ui-slider');
 	wp_enqueue_script('jquery-input-mask', ADMIN_DIR .'assets/js/jquery.maskedinput-1.2.2.js', array( 'jquery' ));
 	wp_enqueue_script('tipsy', ADMIN_DIR .'assets/js/jquery.tipsy.js', array( 'jquery' ));
-	wp_enqueue_script('color-picker', ADMIN_DIR .'assets/js/colorpicker.js', array('jquery'));
-	wp_enqueue_script('ajaxupload', ADMIN_DIR .'assets/js/ajaxupload.js', array('jquery'));
+	//wp_enqueue_script('color-picker', ADMIN_DIR .'assets/js/colorpicker.js', array('jquery'));
 	wp_enqueue_script('cookie', ADMIN_DIR . 'assets/js/cookie.js', 'jquery');
 	wp_enqueue_script('smof', ADMIN_DIR .'assets/js/smof.js', array( 'jquery' ));
+
+
+	// Enqueue colorpicker scripts for versions below 3.5 for compatibility
+	if ( !wp_script_is( 'wp-color-picker', 'registered' ) ) {
+		wp_register_script( 'iris', ADMIN_DIR .'assets/js/iris.min.js', array( 'jquery-ui-draggable', 'jquery-ui-slider', 'jquery-touch-punch' ), false, 1 );
+		wp_register_script( 'wp-color-picker', ADMIN_DIR .'assets/js/color-picker.min.js', array( 'jquery', 'iris' ) );
+	}
+	wp_enqueue_script( 'wp-color-picker' );
+	
+
+	/**
+	 * Enqueue scripts for file uploader
+	 */
+	
+	if ( function_exists( 'wp_enqueue_media' ) )
+		wp_enqueue_media();
+
 }
 
-/**
- * Front end inline jquery scripts
- *
- * @since 1.0.0
- */
-function of_admin_head() { ?>
-		
-	<script type="text/javascript" language="javascript">
-
-	jQuery.noConflict();
-	jQuery(document).ready(function($){
-	
-		// COLOR Picker			
-		$('.colorSelector').each(function(){
-			var Othis = this; //cache a copy of the this variable for use inside nested function
-				
-			$(this).ColorPicker({
-					color: '<?php if(isset($color)) echo $color; ?>',
-					onShow: function (colpkr) {
-						$(colpkr).fadeIn(500);
-						return false;
-					},
-					onHide: function (colpkr) {
-						$(colpkr).fadeOut(500);
-						return false;
-					},
-					onChange: function (hsb, hex, rgb) {
-						$(Othis).children('div').css('backgroundColor', '#' + hex);
-						$(Othis).next('input').attr('value','#' + hex);
-						
-					}
-			});
-				  
-		}); //end color picker
-
-	}); //end doc ready
-	
-	</script>
-	
-<?php }
 
 /**
  * Ajax Save Options
  *
  * @uses get_option()
- * @uses update_option()
  *
  * @since 1.0.0
  */
@@ -156,7 +159,7 @@ function of_ajax_callback()
 	if (! wp_verify_nonce($nonce, 'of_ajax_nonce') ) die('-1'); 
 			
 	//get options array from db
-	$all = get_option(OPTIONS);
+	$all = of_get_options();
 	
 	$save_type = $_POST['type'];
 	
@@ -181,7 +184,7 @@ function of_ajax_callback()
 			
 			$upload_image[$clickedID] = $uploaded_file['url'];
 			
-			update_option(OPTIONS, $upload_image ) ;
+			of_save_options($upload_image);
 		
 				
 		 if(!empty($uploaded_file['error'])) {echo 'Upload Error: ' . $uploaded_file['error']; }	
@@ -195,7 +198,7 @@ function of_ajax_callback()
 			
 			$delete_image = $all; //preserve rest of data
 			$delete_image[$id] = ''; //update array key with empty value	 
-			update_option(OPTIONS, $delete_image ) ;
+			of_save_options($delete_image ) ;
 	
 	}
 	elseif($save_type == 'backup_options')
@@ -204,39 +207,44 @@ function of_ajax_callback()
 		$backup = $all;
 		$backup['backup_log'] = date('r');
 		
-		update_option(BACKUPS, $backup ) ;
+		of_save_options($backup, BACKUPS) ;
 			
 		die('1'); 
 	}
 	elseif($save_type == 'restore_options')
 	{
 			
-		$data = get_option(BACKUPS);
-		
-		update_option(OPTIONS, $data);
+		$smof_data = get_option(BACKUPS);
+
+		update_option(OPTIONS, $smof_data);
+
+		of_save_options($smof_data);
 		
 		die('1'); 
 	}
 	elseif($save_type == 'import_options'){
-			
-		$data = $_POST['data'];
-		$data = unserialize(base64_decode($data)); //100% safe - ignore theme check nag
-		update_option(OPTIONS, $data);
+
+
+		$smof_data = unserialize(base64_decode($smof_data)); //100% safe - ignore theme check nag
+		of_save_options($smof_data);
+
 		
 		die('1'); 
 	}
 	elseif ($save_type == 'save')
 	{
-		wp_parse_str(stripslashes($_POST['data']), $data);
-		unset($data['security']);
-		unset($data['of_save']);
-		update_option(OPTIONS, $data);
+
+		wp_parse_str(stripslashes($_POST['data']), $smof_data);
+		unset($smof_data['security']);
+		unset($smof_data['of_save']);
+		of_save_options($smof_data);
+		
 		
 		die('1');
 	}
 	elseif ($save_type == 'reset')
 	{
-		update_option(OPTIONS,$options_machine->Defaults);
+		of_save_options($options_machine->Defaults);
 		
         die('1'); //options reset
 	}
